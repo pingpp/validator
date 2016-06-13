@@ -280,7 +280,7 @@ func (mv *Validator) Valid(val interface{}, tags string) error {
 
 // validateVar validates one single variable
 func (mv *Validator) validateVar(v interface{}, tag string) error {
-	tags, err := mv.parseTags(tag)
+	tags, err, customerr := mv.parseTags(tag)
 	if err != nil {
 		// unknown tag found, give up.
 		return err
@@ -292,6 +292,9 @@ func (mv *Validator) validateVar(v interface{}, tag string) error {
 		}
 	}
 	if len(errs) > 0 {
+		if customerr != nil {
+			return customerr
+		}
 		return errs
 	}
 	return nil
@@ -305,25 +308,30 @@ type tag struct {
 }
 
 // parseTags parses all individual tags found within a struct tag.
-func (mv *Validator) parseTags(t string) ([]tag, error) {
+func (mv *Validator) parseTags(t string) ([]tag, error, error) {
 	tl := strings.Split(t, ",")
 	tags := make([]tag, 0, len(tl))
+	var customerr error
 	for _, i := range tl {
 		tg := tag{}
 		v := strings.SplitN(i, "=", 2)
 		tg.Name = strings.Trim(v[0], " ")
 		if tg.Name == "" {
-			return []tag{}, ErrUnknownTag
+			return []tag{}, ErrUnknownTag, nil
 		}
 		if len(v) > 1 {
 			tg.Param = strings.Trim(v[1], " ")
 		}
 		var found bool
 		if tg.Fn, found = mv.validationFuncs[tg.Name]; !found {
-			return []tag{}, ErrUnknownTag
+			if tg.Name == "err" {
+				customerr = errors.New(tg.Param)
+				continue
+			}
+			return []tag{}, ErrUnknownTag, nil
 		}
 		tags = append(tags, tg)
 
 	}
-	return tags, nil
+	return tags, nil, customerr
 }
