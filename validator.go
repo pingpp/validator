@@ -106,7 +106,7 @@ type ValidationFunc func(v interface{}, param string) error
 // Validator implements a validator
 type Validator struct {
 	// Tag name being used.
-	tagName string
+	tagName         string
 	// validationFuncs is a map of ValidationFuncs indexed
 	// by their name.
 	validationFuncs map[string]ValidationFunc
@@ -189,14 +189,25 @@ func (mv *Validator) SetValidationFunc(name string, vf ValidationFunc) error {
 // Validate validates the fields of a struct based
 // on 'validator' tags and returns errors found indexed
 // by the field name.
-func Validate(v interface{}) error {
-	return defaultValidator.Validate(v)
+func Validate(v interface{}, fields ...string) error {
+	return defaultValidator.Validate(v, fields...)
+}
+
+func stringContain(slice []string, s string) (contain bool) {
+	contain = false
+	for _, ss := range slice {
+		if ss == s {
+			contain = true
+			return
+		}
+	}
+	return
 }
 
 // Validate validates the fields of a struct based
 // on 'validator' tags and returns errors found indexed
 // by the field name.
-func (mv *Validator) Validate(v interface{}) error {
+func (mv *Validator) Validate(v interface{}, fields ...string) error {
 	sv := reflect.ValueOf(v)
 	st := reflect.TypeOf(v)
 	if sv.Kind() == reflect.Ptr && !sv.IsNil() {
@@ -219,6 +230,11 @@ func (mv *Validator) Validate(v interface{}) error {
 			continue
 		}
 		fname := st.Field(i).Name
+		if len(fields) != 0 {
+			if !stringContain(fields, fname) {
+				continue
+			}
+		}
 		var errs ErrorArray
 
 		if tag != "" {
@@ -238,7 +254,7 @@ func (mv *Validator) Validate(v interface{}) error {
 			e := mv.Validate(f.Interface())
 			if e, ok := e.(ErrorMap); ok && len(e) > 0 {
 				for j, k := range e {
-					m[fname+"."+j] = k
+					m[fname + "." + j] = k
 				}
 			}
 		}

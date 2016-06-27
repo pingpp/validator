@@ -20,6 +20,7 @@ import (
 	"reflect"
 	"regexp"
 	"strconv"
+	"fmt"
 )
 
 // nonzero tests whether a variable value non-zero
@@ -144,7 +145,7 @@ func min(v interface{}, param string) error {
 		return ErrUnsupported
 	}
 	if invalid {
-		return ErrMin
+		return fmt.Errorf("%v(%v)", ErrMin, v)
 	}
 	return nil
 }
